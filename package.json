@@ -1,0 +1,18 @@
+{
+  "name": "holocron-academy",
+  "version": "1.0.0",
+  "description": "A Stanford-curriculum financial modeling academy, guided by Master Yoda.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

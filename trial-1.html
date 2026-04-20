@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trial I: The Basic Model — Holocron Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Work+Sans:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='25' y='25' width='50' height='50' transform='rotate(45 50 50)' fill='none' stroke='%239ace60' stroke-width='4'/%3E%3Crect x='40' y='40' width='20' height='20' transform='rotate(45 50 50)' fill='%239ace60' opacity='0.5'/%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="starfield"></div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark"></span>
+        Holocron Academy
+      </a>
+      <div class="nav-links">
+        <a href="index.html#trials">All Trials</a>
+        <a href="index.html#about">About</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="trial-header">
+    <div class="wrap">
+      <div class="breadcrumb">
+        <a href="index.html">Holocron Academy</a><span>/</span>Trial I
+      </div>
+      <div class="trial-title">
+        <div class="num">I</div>
+        <div>
+          <h1>The Basic Model</h1>
+          <div class="trial-subtitle">Netflix · 2005 · Operating Model & Six-Line Cash Flow</div>
+        </div>
+      </div>
+
+      <div class="yoda-quote" style="margin-top: 2.5rem; max-width: 800px;">
+        Begin at the beginning, you must. Humble, the operating model is — yet the foundation of all that follows. Master this, and the M&amp;A, the LBO, the VC valuation, all become possible. Hmmm.
+        <cite>— Master Yoda</cite>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="wrap">
+      <!-- Step tabs -->
+      <div class="steps-nav" role="tablist">
+        <button class="step-tab active" data-step="1"><span class="step-num">I</span>Study the Codex</button>
+        <button class="step-tab locked" data-step="2"><span class="step-num">II</span>Trial of Knowledge</button>
+        <button class="step-tab locked" data-step="3"><span class="step-num">III</span>The Case</button>
+        <button class="step-tab locked" data-step="4"><span class="step-num">IV</span>Submit for Judgment</button>
+      </div>
+
+      <!-- Step 1: Study -->
+      <div class="step-panel active" data-step="1">
+        <div class="wrap-narrow" style="padding:0;">
+          <div class="eyebrow">Step I of IV</div>
+          <h2>Study the Codex</h2>
+          <p class="lede mt-2">
+            This is the foundation. Before you can value a company, you must be able to build an operating model and a simple cash flow model. The codex covers both — with examples from Jack in the Box, Jet Blue, Wal*Mart, and Coinstar.
+          </p>
+
+          <div class="divider"></div>
+
+          <div class="eyebrow">What You'll Learn</div>
+          <ul style="list-style:none; padding:0; margin-top:1rem;">
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>When to use a market model vs a company-specific revenue build</li>
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>Three standard approaches to projecting COGS and gross margin</li>
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>Fixed/variable splits for operating expenses</li>
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>How to project D&amp;A for both mature and rapidly growing companies</li>
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>The six-line cash flow: EBITDA → Interest → Taxes → NWC → CapEx → CFF → FCF → FCFE</li>
+            <li style="padding:0.6rem 0 0.6rem 2rem; position:relative; color:var(--ink);"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>Maintenance vs expansionary CapEx, working capital intuition, debt/cash policy</li>
+          </ul>
+
+          <div class="divider"></div>
+
+          <div class="download-grid">
+            <div class="download-card">
+              <div class="filetype">PDF · 22 Pages</div>
+              <div class="filename">Basic Financial Models</div>
+              <div class="desc">The core technical note. Read this carefully before attempting the trial.</div>
+              <a href="downloads/trial-1-note.pdf" download class="btn">
+                <span>Download Codex</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v10m-4-4 4 4 4-4M1 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="yoda-quote mt-4">
+            No shortcut, there is. Read the codex you must — fully, slowly, with intention. When ready you are, the trial awaits.
+            <cite>— Master Yoda</cite>
+          </div>
+
+          <div class="mt-4 flex-row">
+            <button class="btn" id="study-confirm">
+              <span>I Have Studied — Begin the Trial</span>
+              <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 6h12m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Quiz -->
+      <div class="step-panel" data-step="2">
+        <div class="wrap-narrow" style="padding:0;">
+          <div class="eyebrow">Step II of IV</div>
+          <h2>Trial of Knowledge</h2>
+          <p class="lede mt-2">
+            Ten questions. Answer seven correctly to advance.
+          </p>
+
+          <div class="divider"></div>
+
+          <div id="quiz-box"></div>
+          <div id="quiz-results"></div>
+        </div>
+      </div>
+
+      <!-- Step 3: Case -->
+      <div class="step-panel" data-step="3">
+        <div class="wrap-narrow" style="padding:0;">
+          <div class="eyebrow">Step III of IV</div>
+          <h2>The Case — Netflix, 2005</h2>
+          <p class="lede mt-2">
+            You are an analyst at a sell-side equity research shop in early 2006. Your job: build a five-year operating model and cash flow projection for Netflix, from 2006E through 2010E.
+          </p>
+          <p class="lede mt-2">
+            The case provides historicals, market penetration assumptions, and three scenarios (Aggressive, Base, Conservative). The template gives you the skeleton — labels, headers, and the hardcoded driver inputs. Your task is to build every formula that connects them.
+          </p>
+
+          <div class="divider"></div>
+
+          <div class="download-grid">
+            <div class="download-card">
+              <div class="filetype">PDF · 13 Pages</div>
+              <div class="filename">Netflix Case</div>
+              <div class="desc">Company overview, the market model, cost drivers, and exhibits. Read this before opening the template.</div>
+              <a href="downloads/trial-1-case.pdf" download class="btn" data-case-download>
+                <span>Download Case</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v10m-4-4 4 4 4-4M1 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+              </a>
+            </div>
+
+            <div class="download-card">
+              <div class="filetype">XLSX · Student Template</div>
+              <div class="filename">Netflix Model — Blank</div>
+              <div class="desc">All labels, headers, and driver inputs preserved. Every formula cell is empty. Your mission: build them.</div>
+              <a href="downloads/trial-1-template.xlsx" download class="btn" data-case-download>
+                <span>Download Template</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v10m-4-4 4 4 4-4M1 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="eyebrow">What You Must Build</div>
+          <ol style="padding-left:1.5rem; margin-top:1rem; color:var(--ink);">
+            <li style="padding:0.5rem 0;">Market model: households → TV penetration → DVD penetration → Netflix subscribers</li>
+            <li style="padding:0.5rem 0;">Revenue: subscription + DVD sales</li>
+            <li style="padding:0.5rem 0;">Cost of sales: library amortization, revenue sharing, postage, packaging</li>
+            <li style="padding:0.5rem 0;">Operating expenses: marketing (SAC × gross adds), fulfillment, tech & dev, G&amp;A</li>
+            <li style="padding:0.5rem 0;">EBIT → pretax income → net income → EPS</li>
+            <li style="padding:0.5rem 0;">Six-line cash flow → CFF → FCF → FCFE</li>
+          </ol>
+
+          <div class="yoda-quote mt-4">
+            Rush, you must not. The model, carefully construct. Every formula, purposeful it must be. Clean layout, auditable logic — these the mark of a true analyst are.
+            <cite>— Master Yoda</cite>
+          </div>
+
+          <div class="mt-4 flex-row">
+            <button class="btn btn-disabled" id="case-continue">
+              <span>Continue to Submission</span>
+              <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 6h12m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+            </button>
+            <span class="faint" style="font-family:var(--mono); font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase;">
+              ↑ Download to unlock
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Submit -->
+      <div class="step-panel" data-step="4">
+        <div class="wrap-narrow" style="padding:0;">
+          <div class="eyebrow">Step IV of IV</div>
+          <h2>Submit for Judgment</h2>
+          <p class="lede mt-2">
+            Upload your completed <code>.xlsx</code>. The grader will compare every key output cell against the answer key, then Master Yoda will review your work and provide personalized feedback.
+          </p>
+
+          <div class="divider"></div>
+
+          <div id="dropzone" class="upload-zone">
+            <div class="icon">⬆</div>
+            <div class="prompt">Drop your Netflix model here, or click to select</div>
+            <div class="sub">XLSX only · Up to 10 MB</div>
+            <input type="file" id="file-input" accept=".xlsx" style="display:none;">
+          </div>
+
+          <div id="file-chosen" class="file-chosen" style="display:none;"></div>
+
+          <div class="flex-row" style="margin-top:1.5rem;">
+            <button id="submit-btn" class="btn btn-disabled">
+              <span>Submit for Judgment</span>
+              <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 6h12m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+            </button>
+          </div>
+
+          <div id="grading-spinner" class="grading-spinner">
+            <div class="spinner"></div>
+            <div id="grading-status" class="grading-status">Reading your work, I am...</div>
+          </div>
+
+          <div id="verdict-box" style="display:none;"></div>
+
+          <div class="yoda-quote mt-4">
+            Judge your work fairly, I will. Errors, we learn from. Perfection, expected it is not — progress, honored it shall be.
+            <cite>— Master Yoda</cite>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <div class="logo">
+          <span class="logo-mark"></span>
+          Holocron Academy
+        </div>
+        <p class="mt-2">Based on the Stanford GSB financial modeling curriculum.</p>
+      </div>
+      <div style="text-align:right;">
+        <p class="mono faint" style="font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase;">Trial I of VI</p>
+        <p class="mt-1 faint" style="font-size:0.75rem;">A personal learning project.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/starfield.js"></script>
+  <script src="assets/quiz.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
