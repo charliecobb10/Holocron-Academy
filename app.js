@@ -1,259 +1,362 @@
 // ============================================================
-// /api/grade.js — Holocron Academy grading serverless function
-//
-// Runs on Vercel. Receives a base64-encoded .xlsx, reads key
-// output cells from the Netflix Trial I model, compares against
-// the answer key, calls the Anthropic API for Yoda-voice
-// feedback, and returns structured JSON.
-//
-// Required env var (set in Vercel dashboard):
-//   ANTHROPIC_API_KEY
+// Trial I — interactive controller
+// Steps: 1) Study  2) Trial of Knowledge (quiz)  3) Case  4) Submit
 // ============================================================
 
-import * as XLSX from 'xlsx';
-import Anthropic from '@anthropic-ai/sdk';
-
-// Vercel: expand body limit (default 1MB) for base64-encoded xlsx uploads
-export const config = {
-  api: { bodyParser: { sizeLimit: '10mb' } },
-};
-
-// ------------------------------------------------------------
-// Trial I — Netflix answer key.
-// Rows/cells match the blank template students downloaded.
-// Values are the expected computed results for Base case.
-// ------------------------------------------------------------
-const TRIAL_1_TARGETS = {
-  sheet: 'Model',
-  years: ['2006E', '2007E', '2008E', '2009E', '2010E'],
-  yearColumns: ['E', 'F', 'G', 'H', 'I'],
-  metrics: [
-    { name: 'Total Revenue',       row: 70,  values: [911999071, 1101315836, 1283099411, 1423340962, 1505616401] },
-    { name: 'Gross Margin',        row: 86,  values: [384822166,  465324623,  542397428,  595724874,  619136905] },
-    { name: 'EBIT',                row: 103, values: [72201664,   108089281,  147633819,  184581360,  194267304] },
-    { name: 'Net Income',          row: 114, values: [50670531,   73997483,   99701432,   123717334,  130013198] },
-    { name: 'EPS',                 row: 119, values: [0.7470,     1.0636,     1.3981,     1.6936,     1.7384] },
-    { name: 'EBITDA',              row: 124, values: [191700664,  239619281,  286091819,  327623360,  338705304] },
-    { name: 'Cash Flow (CFF)',     row: 129, values: [63609000,   84685992,   113193954,  134521074,  136995987] },
-    { name: 'Free Cash Flow',      row: 131, values: [59869550,   80946542,   109454504,  130781624,  133256537] },
-  ],
-};
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-function readCellValue(ws, ref) {
-  const cell = ws[ref];
-  if (!cell) return null;
-  // SheetJS: cell.v is the value; cell.t is type; cell.f is formula (if any)
-  // If the student saved with cached values (Excel always does), .v is populated.
-  if (cell.t === 'e') return { error: cell.w || cell.v || '#ERR' }; // Excel error
-  const v = cell.v;
-  if (v === undefined || v === null) return null;
-  if (typeof v === 'number') return v;
-  const parsed = Number(v);
-  return isNaN(parsed) ? null : parsed;
-}
-
-function cellsMatch(expected, actual) {
-  if (actual === null || actual === undefined) return false;
-  if (typeof actual === 'object' && actual.error) return false;
-  if (expected === 0) return Math.abs(actual) < 1;
-  // 2% relative tolerance for reasonable rounding / scenario drift
-  const rel = Math.abs((actual - expected) / expected);
-  return rel <= 0.02;
-}
-
-function formatNumber(v, metricName) {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'object' && v.error) return v.error;
-  if (metricName === 'EPS') return v.toFixed(3);
-  if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-  if (Math.abs(v) >= 1_000) return (v / 1_000).toFixed(1) + 'K';
-  return v.toFixed(2);
-}
-
-function gradeTrial1(workbook) {
-  const ws = workbook.Sheets[TRIAL_1_TARGETS.sheet];
-  if (!ws) {
-    throw new Error(`Worksheet "${TRIAL_1_TARGETS.sheet}" not found. Did you rename the tab?`);
-  }
-
-  const cellChecks = [];
-  let passCount = 0;
-  let totalCount = 0;
-
-  for (const metric of TRIAL_1_TARGETS.metrics) {
-    for (let yi = 0; yi < TRIAL_1_TARGETS.years.length; yi++) {
-      const col = TRIAL_1_TARGETS.yearColumns[yi];
-      const year = TRIAL_1_TARGETS.years[yi];
-      const ref = `${col}${metric.row}`;
-      const expected = metric.values[yi];
-      const actual = readCellValue(ws, ref);
-      const pass = cellsMatch(expected, actual);
-
-      cellChecks.push({
-        metric: metric.name,
-        year,
-        cell: ref,
-        expected: formatNumber(expected, metric.name),
-        actual: formatNumber(actual, metric.name),
-        pass,
-      });
-      totalCount++;
-      if (pass) passCount++;
-    }
-  }
-
-  const percent = Math.round((passCount / totalCount) * 100);
-
-  return {
-    score: passCount,
-    total: totalCount,
-    percent,
-    cellChecks,
+(function() {
+  const state = {
+    current: 1,
+    studied: false,
+    quizIdx: 0,
+    quizAnswers: [],
+    quizPassed: false,
+    caseDownloaded: false,
+    submitted: false,
   };
-}
 
-// ------------------------------------------------------------
-// Claude API call — generate Yoda-voice feedback
-// ------------------------------------------------------------
-async function getYodaFeedback(gradeResult) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    // Gracefully fall back to a canned response if no API key configured yet
-    return {
-      yodaVerdict: canned(gradeResult.percent),
-      overallAssessment: `You scored ${gradeResult.score} of ${gradeResult.total} (${gradeResult.percent}%) on the cell-by-cell check. Set ANTHROPIC_API_KEY in Vercel to unlock personalized feedback from Master Yoda.`,
-      strengths: [],
-      improvements: [],
-    };
+  // -------- Step navigation --------
+  const tabs = document.querySelectorAll('.step-tab');
+  const panels = document.querySelectorAll('.step-panel');
+
+  function gotoStep(n) {
+    // Guard: can't skip into a locked step
+    if (!canAccess(n)) return;
+    state.current = n;
+    tabs.forEach(t => {
+      const s = parseInt(t.dataset.step);
+      t.classList.toggle('active', s === n);
+      t.classList.toggle('done', s < n && isDone(s));
+      t.classList.toggle('locked', !canAccess(s));
+    });
+    panels.forEach(p => {
+      p.classList.toggle('active', parseInt(p.dataset.step) === n);
+    });
+    window.scrollTo({ top: document.querySelector('.steps-nav').offsetTop - 20, behavior: 'smooth' });
   }
 
-  // Build a compact summary for the model
-  const passing = gradeResult.cellChecks.filter(c => c.pass);
-  const failing = gradeResult.cellChecks.filter(c => !c.pass);
-
-  // Group failures by metric for pattern detection
-  const failuresByMetric = {};
-  for (const c of failing) {
-    if (!failuresByMetric[c.metric]) failuresByMetric[c.metric] = [];
-    failuresByMetric[c.metric].push(`${c.year} (${c.cell}): expected ${c.expected}, got ${c.actual}`);
+  function canAccess(n) {
+    if (n === 1) return true;
+    if (n === 2) return state.studied;
+    if (n === 3) return state.quizPassed;
+    if (n === 4) return state.quizPassed && state.caseDownloaded;
+    return false;
   }
 
-  const passByMetric = {};
-  for (const c of passing) {
-    passByMetric[c.metric] = (passByMetric[c.metric] || 0) + 1;
+  function isDone(n) {
+    if (n === 1) return state.studied;
+    if (n === 2) return state.quizPassed;
+    if (n === 3) return state.caseDownloaded;
+    if (n === 4) return state.submitted;
+    return false;
   }
 
-  const summary = [
-    `Student scored ${gradeResult.score}/${gradeResult.total} cells correct (${gradeResult.percent}%).`,
-    ``,
-    `METRICS PASSING (out of 5 forecast years each):`,
-    ...Object.keys(passByMetric).map(m => `  - ${m}: ${passByMetric[m]}/5 years correct`),
-    ``,
-    `METRICS WITH ERRORS:`,
-    ...Object.entries(failuresByMetric).map(([m, errs]) => `  - ${m}: ${errs.length} failures\n     ${errs.slice(0, 2).join('\n     ')}`),
-  ].join('\n');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    gotoStep(parseInt(t.dataset.step));
+  }));
 
-  const anthropic = new Anthropic({ apiKey });
-
-  const systemPrompt = `You are Master Yoda from Star Wars, but you are teaching financial modeling at a Stanford-caliber academy. You speak in Yoda's signature object-subject-verb inverted syntax ("Strong with the force, you are", "Patience, you must have", "Hmmm"). You are WISE and KIND — a master teacher who gives specific, actionable pedagogical feedback. You are NOT silly or cartoonish. You give real substantive critique of a student's financial model while maintaining Yoda's voice.
-
-You must respond ONLY with valid JSON matching this exact schema — no preamble, no markdown code fences:
-{
-  "yodaVerdict": "A 3-4 sentence Yoda-voice review of their work. Specific about what they did well and what needs work. End with an encouraging or wise line.",
-  "overallAssessment": "A 2-3 sentence assessment IN PLAIN ENGLISH (not Yoda voice). Direct pedagogical feedback about the quality of the work.",
-  "strengths": ["specific plain-English bullet", "another specific bullet"],
-  "improvements": ["specific plain-English bullet about what to fix", "another specific bullet"]
-}
-
-Rules:
-- yodaVerdict must be Yoda voice (inverted syntax, "hmmm", etc.)
-- overallAssessment, strengths, improvements must be PLAIN ENGLISH — clear, actionable feedback from a finance teacher
-- Make bullets specific to the actual metrics that passed/failed
-- If a whole metric line failed, suggest what likely went wrong (e.g., if Revenue is wrong across all years, the market model or pricing calc is off)
-- If only one year of a metric fails, suggest a one-year formula issue (e.g., 2006 only — might be using wrong base year)
-- 2-4 strengths and 2-4 improvements`;
-
-  const userMessage = `Here are the grading results for a student's Trial I submission (Netflix operating model and six-line cash flow for 2006E–2010E):
-
-${summary}
-
-Generate the feedback JSON.`;
-
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1200,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  const text = response.content[0].text.trim();
-  // Strip any accidental code fences
-  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-
-  try {
-    return JSON.parse(cleaned);
-  } catch (e) {
-    // If parsing fails, return the raw text as the verdict
-    return {
-      yodaVerdict: text,
-      overallAssessment: `You scored ${gradeResult.score}/${gradeResult.total}.`,
-      strengths: [],
-      improvements: [],
-    };
-  }
-}
-
-function canned(pct) {
-  if (pct >= 90) return "Exceptional, your work is. Strong with the financial force, you have become. Proud, I am.";
-  if (pct >= 70) return "Solid foundation, you have built. Refinements needed, yes — but on the path, you are. Continue you must.";
-  if (pct >= 40) return "Effort, I see. But clouded, your model still is. Return to the codex, and the trial again attempt.";
-  return "Difficult, this was. But learn from errors, every Jedi must. Rise again, and stronger you will become.";
-}
-
-// ------------------------------------------------------------
-// Main handler
-// ------------------------------------------------------------
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // -------- Step 1: Study --------
+  const studyBtn = document.getElementById('study-confirm');
+  if (studyBtn) {
+    studyBtn.addEventListener('click', () => {
+      state.studied = true;
+      gotoStep(2);
+    });
   }
 
-  try {
-    const { fileBase64, trial } = req.body || {};
-    if (!fileBase64) {
-      return res.status(400).json({ error: 'Missing fileBase64 in request body' });
+  // -------- Step 2: Quiz --------
+  const QUIZ = window.TRIAL_1_QUIZ || [];
+  const quizBox = document.getElementById('quiz-box');
+  const resultsBox = document.getElementById('quiz-results');
+
+  function renderQuestion() {
+    if (state.quizIdx >= QUIZ.length) { return renderResults(); }
+    const q = QUIZ[state.quizIdx];
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+    quizBox.innerHTML = `
+      <div class="quiz-progress">
+        <span>Question ${state.quizIdx + 1} of ${QUIZ.length}</span>
+        <span>${state.quizAnswers.filter(a => a.correct).length} correct so far</span>
+      </div>
+      <div class="quiz-bar"><div class="quiz-bar-fill" style="width:${((state.quizIdx)/QUIZ.length)*100}%"></div></div>
+      <div class="quiz-question">${q.q}</div>
+      <div class="quiz-options" id="opts">
+        ${q.opts.map((o, i) => `
+          <button class="quiz-option" data-i="${i}">
+            <span class="letter">${letters[i]}</span><span>${o}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback" id="fb"></div>
+      <div id="nextrow" style="display:none;"><button class="btn" id="next-q"><span>${state.quizIdx === QUIZ.length - 1 ? 'See Result' : 'Next Question'}</span></button></div>
+    `;
+
+    document.querySelectorAll('.quiz-option').forEach(btn => {
+      btn.addEventListener('click', () => handleAnswer(btn));
+    });
+    document.getElementById('next-q').addEventListener('click', () => {
+      state.quizIdx++;
+      renderQuestion();
+    });
+  }
+
+  function handleAnswer(btn) {
+    const q = QUIZ[state.quizIdx];
+    const picked = parseInt(btn.dataset.i);
+    const isCorrect = picked === q.correct;
+    state.quizAnswers[state.quizIdx] = { picked, correct: isCorrect };
+
+    document.querySelectorAll('.quiz-option').forEach((b, i) => {
+      b.disabled = true;
+      if (i === q.correct) b.classList.add('correct');
+      else if (i === picked) b.classList.add('incorrect');
+    });
+
+    const fb = document.getElementById('fb');
+    fb.className = 'quiz-feedback visible' + (isCorrect ? '' : ' wrong');
+    fb.innerHTML = `<strong style="font-style:normal;color:${isCorrect ? 'var(--jedi)' : 'var(--crimson)'};letter-spacing:0.1em;text-transform:uppercase;font-size:0.75rem;font-family:var(--mono);">${isCorrect ? '✓ Correct' : '✗ Incorrect'}</strong><br><br>${q.feedback}`;
+
+    document.getElementById('nextrow').style.display = 'block';
+  }
+
+  function renderResults() {
+    const correctCount = state.quizAnswers.filter(a => a.correct).length;
+    const pct = Math.round((correctCount / QUIZ.length) * 100);
+    const passed = correctCount >= 7;
+    state.quizPassed = passed;
+
+    const verdictQuote = passed
+      ? (correctCount === QUIZ.length
+          ? "Perfect, your understanding is. Proud, I am. To the case, you now advance."
+          : "Passed, you have. Strong enough with the fundamentals, you are. Hmmm. Proceed, the case awaits.")
+      : "Clouded, your understanding remains. Return to the codex, you must. Rise again, and the trial retake.";
+
+    quizBox.innerHTML = `
+      <div class="quiz-results">
+        <div class="eyebrow">Trial Complete</div>
+        <div class="quiz-score">${correctCount}<span class="out-of">/${QUIZ.length}</span></div>
+        <p class="dim" style="margin-bottom:1.5rem;">${pct}% · ${passed ? 'Passed' : 'Try again — need 7 of 10 to advance'}</p>
+        <div class="yoda-quote" style="text-align:left; max-width:620px; margin:2rem auto;">
+          ${verdictQuote}
+          <cite>— Master Yoda</cite>
+        </div>
+        <div class="flex-row" style="justify-content:center;">
+          ${passed
+            ? `<button class="btn" id="to-case"><span>Retrieve the Case</span><svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 6h12m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg></button>`
+            : `<button class="btn" id="retry"><span>Retake the Trial</span></button>`
+          }
+          ${!passed ? `<a href="#" class="btn btn-ghost" onclick="document.querySelector('[data-step=\\'1\\']').click(); return false;"><span>Return to Codex</span></a>` : ''}
+        </div>
+      </div>
+    `;
+
+    const toCase = document.getElementById('to-case');
+    if (toCase) toCase.addEventListener('click', () => gotoStep(3));
+
+    const retry = document.getElementById('retry');
+    if (retry) retry.addEventListener('click', () => {
+      state.quizIdx = 0;
+      state.quizAnswers = [];
+      renderQuestion();
+    });
+  }
+
+  if (quizBox) renderQuestion();
+
+  // -------- Step 3: Case --------
+  const caseDownloadBtns = document.querySelectorAll('[data-case-download]');
+  const caseContinue = document.getElementById('case-continue');
+  caseDownloadBtns.forEach(b => b.addEventListener('click', () => {
+    // Mark downloaded as soon as user clicks either download link
+    state.caseDownloaded = true;
+    if (caseContinue) caseContinue.classList.remove('btn-disabled');
+  }));
+  if (caseContinue) {
+    caseContinue.addEventListener('click', () => {
+      if (state.caseDownloaded) gotoStep(4);
+    });
+  }
+
+  // -------- Step 4: Submission --------
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const fileChosen = document.getElementById('file-chosen');
+  const submitBtn = document.getElementById('submit-btn');
+  const gradingSpinner = document.getElementById('grading-spinner');
+  const gradingStatus = document.getElementById('grading-status');
+  const verdictBox = document.getElementById('verdict-box');
+  let chosenFile = null;
+
+  if (dropzone) {
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) setFile(e.target.files[0]);
+    });
+  }
+
+  function setFile(f) {
+    if (!f.name.match(/\.xlsx$/i)) {
+      alert('The force requires .xlsx format, my young padawan.');
+      return;
     }
-    if (trial && Number(trial) !== 1) {
-      return res.status(400).json({ error: 'Only Trial 1 grading is currently implemented' });
-    }
+    chosenFile = f;
+    fileChosen.innerHTML = `
+      <span>📄 ${f.name} <span class="faint">· ${(f.size/1024).toFixed(1)} KB</span></span>
+      <button class="btn btn-ghost" style="padding:0.5rem 1rem;" id="clear-file"><span>Change</span></button>
+    `;
+    fileChosen.style.display = 'flex';
+    document.getElementById('clear-file').addEventListener('click', () => {
+      chosenFile = null;
+      fileChosen.style.display = 'none';
+      fileInput.value = '';
+      submitBtn.classList.add('btn-disabled');
+    });
+    submitBtn.classList.remove('btn-disabled');
+  }
 
-    const buffer = Buffer.from(fileBase64, 'base64');
-    if (buffer.length > 10 * 1024 * 1024) {
-      return res.status(413).json({ error: 'File too large (max 10MB)' });
-    }
+  async function submitForGrading() {
+    if (!chosenFile) return;
 
-    let workbook;
+    dropzone.style.display = 'none';
+    fileChosen.style.display = 'none';
+    submitBtn.style.display = 'none';
+    gradingSpinner.classList.add('active');
+
+    const statuses = window.YODA_LINES.grading;
+    let si = 0;
+    gradingStatus.textContent = statuses[0];
+    const cycle = setInterval(() => {
+      si = (si + 1) % statuses.length;
+      gradingStatus.textContent = statuses[si];
+    }, 2200);
+
     try {
-      workbook = XLSX.read(buffer, { type: 'buffer' });
-    } catch (e) {
-      return res.status(400).json({ error: `Could not read the .xlsx file. ${e.message}` });
+      // Read file as base64 for JSON-friendly transport
+      const fileBase64 = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(',')[1]);
+        r.onerror = reject;
+        r.readAsDataURL(chosenFile);
+      });
+
+      const res = await fetch('/api/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trial: 1, filename: chosenFile.name, fileBase64 })
+      });
+      clearInterval(cycle);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Server returned ${res.status}`);
+      }
+      const result = await res.json();
+      renderVerdict(result);
+    } catch (err) {
+      clearInterval(cycle);
+      gradingSpinner.classList.remove('active');
+      verdictBox.innerHTML = `
+        <div class="verdict" style="border-left-color: var(--crimson);">
+          <div class="verdict-header">
+            <div class="verdict-title" style="color: var(--crimson);">The Force is Disturbed</div>
+          </div>
+          <p>The grader could not complete its task. Reason given:</p>
+          <p class="mono" style="padding: 1rem; background: var(--void); margin: 1rem 0; color: var(--crimson); font-size:0.85rem; word-break: break-word;">${err.message}</p>
+          <p class="dim">Most commonly, this means the grading API is not configured yet. Check that <code>ANTHROPIC_API_KEY</code> is set in Vercel's environment variables, and that the <code>/api/grade.js</code> function is deployed.</p>
+          <div class="mt-3 flex-row">
+            <button class="btn btn-ghost" onclick="location.reload()"><span>Try Again</span></button>
+          </div>
+        </div>
+      `;
+      verdictBox.style.display = 'block';
     }
+  }
 
-    const grade = gradeTrial1(workbook);
-    const yoda = await getYodaFeedback(grade);
+  function renderVerdict(result) {
+    state.submitted = true;
+    gradingSpinner.classList.remove('active');
 
-    return res.status(200).json({
-      ...grade,
-      ...yoda,
-    });
-  } catch (err) {
-    console.error('Grade handler error:', err);
-    return res.status(500).json({
-      error: err.message || 'Unexpected grading error',
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    const { score, total, percent, cellChecks, yodaVerdict, overallAssessment, strengths, improvements } = result;
+    const passed = percent >= 70;
+
+    const checksTable = (cellChecks || []).map(c => `
+      <tr>
+        <td class="mono">${c.metric || ''}</td>
+        <td class="mono">${c.year || ''}</td>
+        <td class="mono">${c.cell || ''}</td>
+        <td class="mono" style="text-align:right;">${c.expected ?? ''}</td>
+        <td class="mono" style="text-align:right;">${c.actual ?? ''}</td>
+        <td class="check ${c.pass ? 'pass' : 'fail'}">${c.pass ? '✓' : '✗'}</td>
+      </tr>
+    `).join('');
+
+    verdictBox.innerHTML = `
+      <div class="verdict">
+        <div class="verdict-header">
+          <div class="verdict-title">The Master's Judgment</div>
+          <div class="verdict-grade">${score}<span class="pct">/${total}</span></div>
+        </div>
+
+        <div class="verdict-quote">
+          ${yodaVerdict || 'Your work, received it has been.'}
+          <cite style="display:block; margin-top:0.75rem; font-family:var(--mono); font-size:0.75rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--jedi); font-style:normal;">— Master Yoda</cite>
+        </div>
+
+        ${overallAssessment ? `
+        <div class="verdict-section">
+          <h4>Overall Assessment</h4>
+          <p>${overallAssessment}</p>
+        </div>` : ''}
+
+        ${strengths && strengths.length ? `
+        <div class="verdict-section">
+          <h4>Strong With The Force</h4>
+          <ul style="list-style:none; padding-left:0;">
+            ${strengths.map(s => `<li style="padding:0.4rem 0 0.4rem 1.5rem; position:relative; color:var(--ink); font-size:0.95rem;"><span style="position:absolute; left:0; color:var(--jedi);">▸</span>${s}</li>`).join('')}
+          </ul>
+        </div>` : ''}
+
+        ${improvements && improvements.length ? `
+        <div class="verdict-section">
+          <h4>Training, You Still Require</h4>
+          <ul style="list-style:none; padding-left:0;">
+            ${improvements.map(s => `<li style="padding:0.4rem 0 0.4rem 1.5rem; position:relative; color:var(--ink); font-size:0.95rem;"><span style="position:absolute; left:0; color:var(--amber);">▸</span>${s}</li>`).join('')}
+          </ul>
+        </div>` : ''}
+
+        ${cellChecks && cellChecks.length ? `
+        <div class="verdict-section">
+          <h4>Cell-by-Cell Verification (${percent}% match)</h4>
+          <div style="overflow-x:auto;">
+            <table class="cell-check-table">
+              <thead><tr><th>Metric</th><th>Year</th><th>Cell</th><th style="text-align:right;">Expected</th><th style="text-align:right;">Your Value</th><th style="text-align:center;">Check</th></tr></thead>
+              <tbody>${checksTable}</tbody>
+            </table>
+          </div>
+        </div>` : ''}
+
+        <div class="flex-row mt-4" style="justify-content:space-between;">
+          <button class="btn btn-ghost" onclick="location.reload()"><span>Submit Again</span></button>
+          ${passed ? `<a href="index.html#trials" class="btn"><span>Return to the Archive</span></a>` : ''}
+        </div>
+      </div>
+    `;
+    verdictBox.style.display = 'block';
+    window.scrollTo({ top: verdictBox.offsetTop - 40, behavior: 'smooth' });
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', () => {
+      if (!submitBtn.classList.contains('btn-disabled')) submitForGrading();
     });
   }
-}
+})();
