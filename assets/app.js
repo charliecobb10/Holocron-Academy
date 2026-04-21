@@ -88,6 +88,10 @@
       </div>
       <div class="quiz-feedback" id="fb"></div>
       <div id="nextrow" style="display:none;"><button class="btn" id="next-q"><span>${state.quizIdx === QUIZ.length - 1 ? 'See Result' : 'Next Question'}</span></button></div>
+      <div class="quiz-footer-links">
+        <button type="button" id="restart-quiz" class="link-btn">↺ Restart Quiz</button>
+        <button type="button" id="skip-quiz" class="link-btn">Skip ahead to the case →</button>
+      </div>
     `;
 
     document.querySelectorAll('.quiz-option').forEach(btn => {
@@ -96,6 +100,19 @@
     document.getElementById('next-q').addEventListener('click', () => {
       state.quizIdx++;
       renderQuestion();
+    });
+    document.getElementById('restart-quiz').addEventListener('click', () => {
+      if (confirm('Restart the quiz from Question 1? Your current answers will be cleared.')) {
+        state.quizIdx = 0;
+        state.quizAnswers = [];
+        renderQuestion();
+      }
+    });
+    document.getElementById('skip-quiz').addEventListener('click', () => {
+      if (confirm('Skip the quiz and go directly to the case? You can come back and take it anytime.')) {
+        state.quizPassed = true;
+        gotoStep(3);
+      }
     });
   }
 
