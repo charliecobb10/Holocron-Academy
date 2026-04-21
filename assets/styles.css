@@ -719,6 +719,30 @@ section { padding: 5rem 0; }
   border: 1px solid var(--border);
 }
 
+/* Footer links beneath each quiz question — restart + skip */
+.quiz-footer-links {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0.3rem 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 0.2s var(--ease);
+}
+.link-btn:hover { color: var(--jedi); }
+
 .quiz-score {
   font-family: var(--serif);
   font-size: 5rem;
