@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accounting Assault — Holocron Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Work+Sans:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='25' y='25' width='50' height='50' transform='rotate(45 50 50)' fill='none' stroke='%239ace60' stroke-width='4'/%3E%3Crect x='40' y='40' width='20' height='20' transform='rotate(45 50 50)' fill='%239ace60' opacity='0.5'/%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="starfield"></div>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark"></span>
+        Holocron Academy
+      </a>
+      <div class="nav-links">
+        <a href="index.html">Galaxy Map</a>
+        <a href="index.html#about">About</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="trial-header">
+    <div class="wrap">
+      <div class="breadcrumb">
+        <a href="index.html">Galaxy</a><span>/</span>Accounting Mission 01
+      </div>
+      <div class="trial-title">
+        <div class="num">◆</div>
+        <div>
+          <h1>Accounting Assault</h1>
+          <div class="trial-subtitle">Financial Statements & Articulation · PE/IB Grade</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="wrap">
+      <div id="mission-root"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <div class="logo">
+          <span class="logo-mark"></span>
+          Holocron Academy
+        </div>
+        <p class="mt-2">Built by Charlie Cobb.</p>
+      </div>
+      <div style="text-align:right;">
+        <p class="mono faint" style="font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase;">Accounting Mission 01 of 06</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/progress.js"></script>
+  <script src="assets/starfield.js"></script>
+  <script src="assets/accounting-1.js"></script>
+  <script>
+    // Bind the data file's content to the generic mission controller
+    window.ACCOUNTING_DATA = {
+      ...window.ACCOUNTING_1,
+      yodaIntro: "Accounting, the language of business it is. But PE analyst you wish to become — debits and credits, beyond you they are. The articulation of statements, the flow of cash through accrual, these you must master. Focus."
+    };
+  </script>
+  <script src="assets/accounting-mission.js"></script>
+</body>
+</html>
