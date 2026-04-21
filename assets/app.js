@@ -141,6 +141,11 @@
     const passed = correctCount >= 7;
     state.quizPassed = passed;
 
+    // Record progress
+    if (window.HolocronProgress) {
+      window.HolocronProgress.markQuizResult('trial-1', correctCount, QUIZ.length);
+    }
+
     const verdictQuote = passed
       ? (correctCount === QUIZ.length
           ? "Perfect, your understanding is. Proud, I am. To the case, you now advance."
@@ -304,6 +309,11 @@
 
     const { score, total, percent, cellChecks, yodaVerdict, overallAssessment, strengths, improvements } = result;
     const passed = percent >= 70;
+
+    // Record grading result
+    if (window.HolocronProgress) {
+      window.HolocronProgress.markSubmitted('trial-1', percent);
+    }
 
     const checksTable = (cellChecks || []).map(c => `
       <tr>
